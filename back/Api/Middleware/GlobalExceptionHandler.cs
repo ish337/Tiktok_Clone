@@ -57,6 +57,7 @@ public class GlobalExceptionHandler
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Внутрішня помилка сервера");
             if (webHostEnvironment.IsDevelopment())
             {
                 context.Response.StatusCode = 500;
