@@ -1,0 +1,41 @@
+variable "aws_access_key" {
+  type    = string
+  default = ""
+}
+
+variable "aws_secret_key" {
+  type    = string
+  default = ""
+}
+
+variable "a-zone" {
+  type    = string
+  default = "us-east-1a"
+}
+
+variable "ami-id" {
+  type = string
+  default = "ami-0ecb62995f68bb549"
+}
+
+variable "instance_type" {
+  type    = string
+  default = "t3.micro"
+}
+
+variable "key_name" {
+  type    = string
+  default = ""
+}
+
+variable "my_ip" {
+  type        = string
+  description = "Your public IP"
+  default     = ""
+}
+
+variable "jenkins_admin_password" {
+  type        = string
+  description = "Password for the Jenkins admin user"
+  default     = ""
+}

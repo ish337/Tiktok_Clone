@@ -14,8 +14,8 @@ services:
         networks:
             - tiktok_network
         volumes:
-            - ./certbot/conf:/etc/letsencrypt:ro
-            - ./certbot/www:/var/www/certbot:ro
+            - ${CERTBOT_DIR:-./certbot}/conf:/etc/letsencrypt:ro
+            - ${CERTBOT_DIR:-./certbot}/www:/var/www/certbot:ro
         restart: unless-stopped
 
     db:
@@ -40,7 +40,6 @@ services:
     api:
         build:
             context: back/
-            dockerfile: .dockerfile
         container_name: api
         environment:
             ASPNETCORE_ENVIRONMENT: Production

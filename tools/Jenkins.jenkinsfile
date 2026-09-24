@@ -1,0 +1,35 @@
+#!groovy
+
+pipeline {
+    agent { label 'tiktok' }
+
+    environment {
+        // Secret file credential with the contents of .env_server
+        ENV_FILE = credentials('tiktok-env-server')
+        // HTTPS certificate created by install_jenkins_agent.sh
+        CERTBOT_DIR = '/opt/certbot'
+    }
+
+    stages {
+
+        stage("Build") {
+            steps {
+                echo 'Building images ...'
+                sh '''
+                    docker compose -p tiktok -f compose.server.yaml --env-file "$ENV_FILE" build
+                '''
+            }
+        }
+
+        stage("Deploy TikTok on remote server") {
+            steps {
+                echo 'Deploying TikTok on remote server ...'
+                sh '''
+                    docker compose -p tiktok -f compose.server.yaml --env-file "$ENV_FILE" up -d --remove-orphans
+                    docker image prune -f
+                '''
+            }
+        }
+
+    }
+}

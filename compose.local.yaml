@@ -35,7 +35,6 @@ services:
     api:
         build:
             context: back/
-            dockerfile: .dockerfile
         container_name: api
         environment:
             ASPNETCORE_ENVIRONMENT: Development
