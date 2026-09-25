@@ -3,6 +3,7 @@ import {baseQueryWithReauth} from "@/store/baseQueryWithReauth.ts";
 import type {ApiResponse} from "@/types/ApiResponse.ts";
 import type {SimpleUser, UserProfile} from "@/types/User.ts";
 import type {PagedResult} from "@/types/Pagination.ts";
+import {parseMessagePrivacy, type MessagePrivacy} from "@/lib/messagePrivacy.ts";
 
 interface FollowUserParams {
     followingId: string;
@@ -28,15 +29,33 @@ interface ChangeUsernameParams {
 export const userApi = createApi({
     reducerPath: "userApi",
     baseQuery: baseQueryWithReauth,
-    tagTypes: ["UserProfile"],
+    tagTypes: ["UserProfile", "MessagePrivacy"],
     endpoints: (build) => ({
+        getMessagePrivacy: build.query<ApiResponse<MessagePrivacy | null>, void>({
+            query: () => "api/users/settings/message-privacy",
+            transformResponse: (response: ApiResponse<unknown>) => ({
+                ...response,
+                data: parseMessagePrivacy(response.data),
+            }),
+            providesTags: ["MessagePrivacy"],
+        }),
+        changeMessagePrivacy: build.mutation<ApiResponse<null>, MessagePrivacy>({
+            query: (newPrivacy) => ({
+                url: "api/users/settings/message-privacy",
+                method: "POST",
+                params: {newPrivacy},
+            }),
+            invalidatesTags: (_result, error) => error ? [] : ["MessagePrivacy"],
+        }),
         getMe: build.query<ApiResponse<UserProfile>, void>({
             query: () => ({
                 url: `api/users/me`,
                 method: "GET",
             }),
             providesTags: (result) =>
-                result?.data ? [{type: "UserProfile", id: result.data.username}] : [],
+                result?.data
+                    ? [{type: "UserProfile", id: result.data.username}, {type: "UserProfile", id: "ME"}]
+                    : [{type: "UserProfile", id: "ME"}],
         }),
         getUserProfile: build.query<ApiResponse<UserProfile>, string>({
             query: (username) => ({
@@ -73,7 +92,7 @@ export const userApi = createApi({
                 method: "PATCH",
                 body: {newUsername},
             }),
-            invalidatesTags: (_result, _error, {currentUsername}) => [{type: "UserProfile", id: currentUsername}],
+            invalidatesTags: () => [{type: "UserProfile", id: "ME"}],
         }),
         getFollowers: build.query<ApiResponse<PagedResult<SimpleUser>>, FollowListParams>({
             query: ({username, pageNumber, pageSize}) => ({
@@ -91,6 +110,8 @@ export const userApi = createApi({
 });
 
 export const {
+    useGetMessagePrivacyQuery,
+    useChangeMessagePrivacyMutation,
     useGetMeQuery,
     useGetUserProfileQuery,
     useFollowUserMutation,

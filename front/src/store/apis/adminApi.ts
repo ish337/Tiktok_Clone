@@ -16,6 +16,15 @@ export interface PageParams {
     pageSize: number;
 }
 
+export interface GetAdminUsersParams extends PageParams {
+    search?: string;
+    isBanned?: boolean;
+}
+
+export interface GetAdminVideosParams extends PageParams {
+    isBanned?: boolean;
+}
+
 export interface BanUserParams {
     id: string;
     reason: number;
@@ -35,9 +44,14 @@ export const adminApi = createApi({
     baseQuery: baseQueryWithReauth,
     tagTypes: ["AdminUsers", "AdminVideos", "AdminReports"],
     endpoints: (build) => ({
-        getAdminUsers: build.query<ApiResponse<PagedResult<SimpleUserDto>>, PageParams>({
-            query: ({pageNumber, pageSize}) => ({
-                url: `api/admin-panel/users?pageNumber=${pageNumber}&pageSize=${pageSize}`,
+        getAdminUsers: build.query<ApiResponse<PagedResult<SimpleUserDto>>, GetAdminUsersParams>({
+            query: ({pageNumber, pageSize, search, isBanned}) => ({
+                url: `api/admin-panel/users?${new URLSearchParams({
+                    pageNumber: String(pageNumber),
+                    pageSize: String(pageSize),
+                    ...(search ? {search} : {}),
+                    ...(isBanned === undefined ? {} : {isBanned: String(isBanned)}),
+                })}`,
                 method: "get",
             }),
             providesTags: (result) =>
@@ -57,18 +71,26 @@ export const adminApi = createApi({
                 url: `api/admin-panel/users/ban?id=${id}&reason=${reason}`,
                 method: "post",
             }),
-            invalidatesTags: (_result, _err, {id}) => [{type: "AdminUsers", id}],
+            invalidatesTags: () => ["AdminUsers"],
         }),
         unbanUser: build.mutation<ApiResponse<null>, string>({
             query: (id) => ({
                 url: `api/admin-panel/users/unban?id=${id}`,
                 method: "post",
             }),
-            invalidatesTags: (_result, _err, id) => [{type: "AdminUsers", id}],
+            invalidatesTags: () => ["AdminUsers"],
         }),
-        getAdminVideos: build.query<ApiResponse<PagedResult<SimpleVideoDto>>, PageParams>({
-            query: ({pageNumber, pageSize}) => ({
-                url: `api/admin-panel/videos?pageNumber=${pageNumber}&pageSize=${pageSize}`,
+        getAdminUserVideos: build.query<ApiResponse<PagedResult<SimpleVideoDto>>, PageParams & {id: string}>({
+            query: params => ({url: "api/admin-panel/users/video", params}),
+            providesTags: result => result?.data.items.map(v => ({type: "AdminVideos", id: v.id})) ?? [],
+        }),
+        getAdminVideos: build.query<ApiResponse<PagedResult<SimpleVideoDto>>, GetAdminVideosParams>({
+            query: ({pageNumber, pageSize, isBanned}) => ({
+                url: `api/admin-panel/videos?${new URLSearchParams({
+                    pageNumber: String(pageNumber),
+                    pageSize: String(pageSize),
+                    ...(isBanned === undefined ? {} : {isBanned: String(isBanned)}),
+                })}`,
                 method: "get",
             }),
             providesTags: (result) =>
@@ -114,7 +136,8 @@ export const adminApi = createApi({
             query: (id) => ({
                 url: `api/admin-panel/reports/mark-as-resolved/${id}`,
                 method: "PATCH",
-            })
+            }),
+            invalidatesTags: () => [{type: "AdminReports", id: "Video"}, {type: "AdminReports", id: "User"}, {type: "AdminReports", id: "Comment"}],
         })
     }),
 });
@@ -125,6 +148,7 @@ export const {
     useBanUserMutation,
     useUnbanUserMutation,
     useGetAdminVideosQuery,
+    useGetAdminUserVideosQuery,
     useBanVideoMutation,
     useUnbanVideoMutation,
     useGetAdminReportsQuery,

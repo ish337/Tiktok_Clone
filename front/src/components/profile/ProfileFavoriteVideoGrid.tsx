@@ -9,10 +9,11 @@ import {formatCount} from "@/lib/utils.ts";
 
 interface ProfileFavoriteVideoGridProps {
     userId: string;
+    username: string;
     enabled: boolean;
 }
 
-const ProfileFavoriteVideoGrid = ({userId, enabled}: ProfileFavoriteVideoGridProps) => {
+const ProfileFavoriteVideoGrid = ({userId, username, enabled}: ProfileFavoriteVideoGridProps) => {
     const {t} = useTranslation();
     const navigate = useNavigate();
     const containerRef = useRef<HTMLDivElement>(null);
@@ -73,19 +74,18 @@ const ProfileFavoriteVideoGrid = ({userId, enabled}: ProfileFavoriteVideoGridPro
 
     return (
         <div ref={containerRef} className="h-full w-full overflow-y-auto px-4 pb-8">
-            <div className="grid gap-2 grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8">
+            <div className="grid gap-2 grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8">
                 {videos.map((video) => {
-                    const authorUsername = video.author?.username;
                     const goToVideo = () => {
-                        if (!authorUsername) return;
-                        navigate(`/@${authorUsername}/video/${video.id}`, {
-                            state: {userId: video.author?.id},
+                        navigate(`/@${username}/favorites/video/${video.id}`, {
+                            state: {userId},
                         });
                     };
 
                     return (
                         <div
                             key={video.id}
+                            data-testid={`favorite-video-${video.id}`}
                             role="button"
                             tabIndex={0}
                             onClick={goToVideo}

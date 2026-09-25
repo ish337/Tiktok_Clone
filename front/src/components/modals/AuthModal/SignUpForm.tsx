@@ -61,7 +61,6 @@ const SignUpForm = ({onSwitchToSignIn, onSuccess}: SignUpProps) => {
     })
 
     const onSubmit = async (data: SignUpFormData) => {
-        console.log(data);
         try {
             await registerRequest(data).unwrap();
             onSuccess(data.email);

@@ -1,6 +1,7 @@
 import {type FormEvent, useEffect, useMemo, useState} from "react";
 import {useTranslation} from "react-i18next";
 import {toast} from "sonner";
+import ReportContentDialog from "@/components/feed/ReportContentDialog.tsx";
 import {Heart, Loader2, Send, Trash2} from "lucide-react";
 import {Dialog, DialogContent, DialogHeader, DialogTitle} from "@/components/ui/dialog.tsx";
 import {Button} from "@/components/ui/button.tsx";
@@ -39,6 +40,7 @@ const CommentRow = ({
     const dispatch = useAppDispatch();
     const isAuth = useAppSelector((s) => s.auth.isAuth);
 
+    const [isReportOpen, setIsReportOpen] = useState(false);
     const [isLiked, setIsLiked] = useState(comment.isLiked);
     const [likesCount, setLikesCount] = useState(comment.likesCount);
     const [likeComment] = useLikeCommentMutation();
@@ -127,6 +129,7 @@ const CommentRow = ({
 
     return (
         <div className="flex flex-col gap-2">
+            <ReportContentDialog contentId={comment.id} contentType="Comment" open={isReportOpen} onOpenChange={setIsReportOpen}/>
             <div className="flex gap-3">
                 <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-muted">
                     {comment.avatarUrl ? (
@@ -161,6 +164,7 @@ const CommentRow = ({
                                     : t("comments.showReplies", {count: localReplyCount})}
                             </button>
                         )}
+                        {!comment.isOwn && <button type="button" onClick={() => isAuth ? setIsReportOpen(true) : dispatch(openModal())}>{t("report.reportButton")}</button>}
                         {comment.isOwn && (
                             <button
                                 type="button"
@@ -182,7 +186,7 @@ const CommentRow = ({
                                 onChange={(e) => setReplyText(e.target.value)}
                                 placeholder={t("comments.replyPlaceholder", {username: comment.ownerUsername})}
                                 maxLength={500}
-                                className="w-full min-w-0 rounded-full border border-input bg-transparent px-3 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                                className="w-full min-w-0 rounded-full border border-input bg-transparent px-3 py-1.5 text-base md:text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                             />
                             <Button type="submit" size="icon-sm" disabled={isSendingReply || !replyText.trim()}>
                                 {isSendingReply ? <Loader2 className="h-4 w-4 animate-spin"/> : <Send className="h-4 w-4"/>}
@@ -295,7 +299,7 @@ const CommentsDialog = ({videoId, open, onOpenChange, onCommentsCountChange}: Co
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-lg">
+            <DialogContent className="flex h-[75dvh] max-h-[85dvh] flex-col max-sm:top-auto max-sm:bottom-0 max-sm:left-0 max-sm:max-w-full max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-b-none max-sm:pb-[max(1rem,env(safe-area-inset-bottom))] sm:h-auto sm:max-h-[85vh] sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle>{t("comments.title")}</DialogTitle>
                 </DialogHeader>
@@ -342,7 +346,7 @@ const CommentsDialog = ({videoId, open, onOpenChange, onCommentsCountChange}: Co
                         placeholder={isAuth ? t("comments.placeholder") : t("comments.signInToComment")}
                         maxLength={500}
                         className={cn(
-                            "w-full min-w-0 rounded-full border border-input bg-transparent px-3.5 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                            "w-full min-w-0 rounded-full border border-input bg-transparent px-3.5 py-2 text-base md:text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                         )}
                     />
                     <Button type="submit" size="icon" disabled={isSending || !text.trim()}>

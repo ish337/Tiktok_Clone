@@ -85,7 +85,7 @@ public class UserController(IMediator _mediator) : ControllerBase
     public async Task<IActionResult> Refresh()
     {
         var refreshToken = Request.Cookies["refreshToken"]
-                           ?? throw new UnauthorizedException("Refresh token не знайдений");
+                           ?? throw new UnauthorizedException(ErrorCodes.InvalidToken, "Refresh token not found.");
 
         var newTokens = await _mediator.Send(new RefreshTokensCommand(refreshToken));
 
@@ -193,13 +193,15 @@ public class UserController(IMediator _mediator) : ControllerBase
     }
 
     [HttpPost("settings/message-privacy")]
-    public async Task<IActionResult> ChangeMessagePrivacy(MessagePrivacy newPrivacy)
+    [Authorize]
+    public async Task<IActionResult> ChangeMessagePrivacy([FromQuery] MessagePrivacy newPrivacy)
     {
         await _mediator.Send(new ChangeMessagePrivacyCommand(newPrivacy));
         return Ok(ApiResponse<object?>.Success(null));
     }
 
     [HttpGet("settings/message-privacy")]
+    [Authorize]
     public async Task<IActionResult> GetMessagePrivacy()
     {
         var privacy = await _mediator.Send(new GetMessagePrivacyCommand());
