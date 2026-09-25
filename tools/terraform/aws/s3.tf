@@ -4,6 +4,10 @@ locals {
   media_bucket = "much-more-demo-media-a41fd8"
 }
 
+// The terraform user can't create IAM users, so the app signs with the terraform key itself
+// (AWS_S3_ACCESS_KEY / AWS_S3_SECRET_KEY in .env_server = TF_VAR_aws_access_key / TF_VAR_aws_secret_key)
+data "aws_caller_identity" "current" {}
+
 resource "aws_s3_bucket" "media" {
   bucket = local.media_bucket
   // Media is useless without the DB, which is destroyed with the agent anyway
@@ -19,21 +23,44 @@ resource "aws_s3_bucket_public_access_block" "media" {
   restrict_public_buckets = false
 }
 
-// The site loads processed videos, thumbnails and avatars straight from the bucket
 resource "aws_s3_bucket_policy" "media" {
   bucket = aws_s3_bucket.media.id
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Sid       = "PublicReadMedia"
-      Effect    = "Allow"
-      Principal = "*"
-      Action    = "s3:GetObject"
-      Resource = [
-        "${aws_s3_bucket.media.arn}/uploads/processed/*",
-        "${aws_s3_bucket.media.arn}/avatars/*",
-      ]
-    }]
+    Statement = [
+      // The site loads processed videos, thumbnails and avatars straight from the bucket
+      {
+        Sid       = "PublicReadMedia"
+        Effect    = "Allow"
+        Principal = "*"
+        Action    = "s3:GetObject"
+        Resource = [
+          "${aws_s3_bucket.media.arn}/uploads/processed/*",
+          "${aws_s3_bucket.media.arn}/avatars/*",
+        ]
+      },
+      // The app's key, granted here so it works whatever that user's own IAM policy allows
+      {
+        Sid       = "AppObjects"
+        Effect    = "Allow"
+        Principal = { AWS = data.aws_caller_identity.current.arn }
+        Action = [
+          "s3:PutObject",
+          "s3:GetObject",
+          "s3:DeleteObject",
+          "s3:AbortMultipartUpload",
+          "s3:ListMultipartUploadParts",
+        ]
+        Resource = "${aws_s3_bucket.media.arn}/*"
+      },
+      {
+        Sid       = "AppList"
+        Effect    = "Allow"
+        Principal = { AWS = data.aws_caller_identity.current.arn }
+        Action    = ["s3:ListBucket", "s3:ListBucketMultipartUploads"]
+        Resource  = aws_s3_bucket.media.arn
+      },
+    ]
   })
 
   depends_on = [aws_s3_bucket_public_access_block.media]
@@ -52,53 +79,9 @@ resource "aws_s3_bucket_cors_configuration" "media" {
   }
 }
 
-// Key for the api and video_processor containers (AWS_S3_ACCESS_KEY / AWS_S3_SECRET_KEY in .env_server)
-resource "aws_iam_user" "media" {
-  name = "${var.duckdns_subdomain}-media"
-}
-
-resource "aws_iam_user_policy" "media" {
-  name = "media-bucket-access"
-  user = aws_iam_user.media.name
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "s3:PutObject",
-          "s3:GetObject",
-          "s3:DeleteObject",
-          "s3:AbortMultipartUpload",
-          "s3:ListMultipartUploadParts",
-        ]
-        Resource = "${aws_s3_bucket.media.arn}/*"
-      },
-      {
-        Effect   = "Allow"
-        Action   = ["s3:ListBucket", "s3:ListBucketMultipartUploads"]
-        Resource = aws_s3_bucket.media.arn
-      },
-    ]
-  })
-}
-
-resource "aws_iam_access_key" "media" {
-  user = aws_iam_user.media.name
-}
-
 
 //  Outputs
 output "media_bucket_url" {
   value       = "https://${aws_s3_bucket.media.bucket_regional_domain_name}"
   description = "Public base URL of the media bucket (AWS__S3__CdnBaseUrl)"
-}
-
-output "media_env_server_lines" {
-  value       = <<-EOT
-    AWS_S3_ACCESS_KEY=${aws_iam_access_key.media.id}
-    AWS_S3_SECRET_KEY=${aws_iam_access_key.media.secret}
-  EOT
-  description = "AWS_S3_* lines for .env_server"
-  sensitive   = true
 }
